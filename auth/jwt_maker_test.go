@@ -9,7 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+
 func TestJwtMakeToken(t *testing.T) {
+	
 	maker := NewJwtMaker()
 	token, err :=maker.MakeToken(uuid.NewString(), time.Hour)
 	assert.Nil(t, err)
@@ -20,7 +22,9 @@ func TestJwtMakeToken(t *testing.T) {
 	fmt.Println(token)
 }
 
+
 func TestJwtVerifyToken(t *testing.T) {
+
 	// valid case
 	maker := NewJwtMaker()
 	username := uuid.NewString()
