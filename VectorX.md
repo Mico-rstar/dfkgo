@@ -3,77 +3,60 @@ Deepfake 后端项目，技术栈使用
 - golang
 - gin
 - gorm + mysql
-- aliyun oss
+- aliyun oss（Go SDK V2 + STS 临时凭证）
 
-## PR
-
-后端服务（dfkgo）需对外提供以下能力，所有受保护接口需 JWT Bearer Token 鉴权。
-
-### 1. 用户认证（注册 / 登录）
-- `POST /api/auth/register`：邮箱 + 密码注册。
-  - 邮箱唯一性校验、密码加密存储。
-  - 生成邮件验证令牌并发送验证邮件。
-  - 提供验证令牌校验接口完成激活。
-- `POST /api/auth/login`：邮箱 + 密码登录，校验通过后签发 JWT（有效期 24h）。
-- 提供令牌刷新接口与登出接口。
-
-### 2. 文件上传
-- `POST /api/upload`：multipart 上传待检测音视频文件。
-  - 类型白名单：mp4 / mov / avi / mp3 / wav。
-  - 大小限制：≤ 500MB。
-  - 支持分块上传（断点续传）。
-  - 临时文件存储管理，返回唯一任务 ID。
-
-### 3. Deepfake 多模型检测
-- 任务队列管理：接收检测任务并调度执行。
-- 并行调用四个模型（视频、音频、图像、跨模态）至 ModelServer。
-- 任务进度与状态跟踪接口（排队 / 进行中 / 完成 / 失败）。
-- 结果聚合算法：将各模型结果合成一个综合概率。
-- 任务取消接口与超时处理机制。
-
-### 4. 检测结果
-- 提供结构化结果数据接口（综合结果 + 各模型明细）。
-- 报告数据聚合，提供 PDF 报告生成与下载服务。
-- 结果缓存机制，避免重复计算。
-
-### 5. 历史记录
-- 历史记录查询接口（分页）。
-- 支持按时间检索。
-- 记录软删除（单条 / 批量）。
-- 数据统计接口。
-
-### 6. 用户个人信息
-- `GET /api/user/profile`：返回 username、email、nickname、avatarUrl、bio。需 JWT。
-- `PUT /api/user/profile`：更新昵称、简介等基本资料（头像通过单独接口）。需 JWT。
-- `POST /api/user/upload-avatar`：multipart 上传头像，保存到对象存储/静态目录，更新 avatarUrl 字段并返回新 URL。
-- `PUT /api/user/change-password`：校验旧密码，加密存储新密码；成功后可使该用户其他 JWT 失效。需 JWT。
-- `POST /api/user/change-email`：检查新邮箱是否被占用，生成验证码存入 Redis（有效期 5 分钟）并发送到新邮箱。
-- `PUT /api/user/confirm-new-email`：核对验证码后更新邮箱字段，并向旧邮箱发送通知邮件。需 JWT。
-
-
+## 设计文档
+完整后端设计见 [docs/superpowers/specs/2026-04-18-dfkgo-backend-design.md](docs/superpowers/specs/2026-04-18-dfkgo-backend-design.md)。
+本文件仅记录项目背景与高层范围，详细架构、API、表结构、决策记录请以设计文档为准。
 
 ## 基本逻辑
+```
 客户端/web <-> dfkgo <-> ModelServer
-                ｜-- oss --｜
-- 多模态数据上传到oss
-- ModelServer从oss拉取数据进行检测后返回结果
+                 |-- oss --|
+```
+- 多模态数据由客户端 STS 直传 OSS，dfkgo 不经手字节流
+- ModelServer 从 OSS 拉取数据进行检测后返回结果（dfkgo 仅传 oss_url + task_id）
 
 ## dfkgo scope
-### In scope
-- 用户鉴权
-- 用户相关状态维护
-- 检测历史、检测结果状态维护
+### In Scope（本期实现）
+- 用户域：邮密注册（无邮箱验证）、邮密登录、Profile 查看与更新、头像 STS 上传
+- 文件域：STS 临时凭证直传 OSS、上传完成回调、用户维度 MD5 秒传
+- 任务域：统一 `/api/tasks` 接口，按模态（image/video/audio）分发到 ModelServer，状态/结果查询、软取消
+- 历史域：分页查询、单条/批量软删、统计接口
+- 基础设施：MySQL/GORM、OSS Go SDK V2 + STS、统一 envelope 响应、JWT 中间件、内存任务队列
 
-### Out of scope
-- 前端能力
-- 模型能力
-- 模型服务生命周期，将模型服务视为一个常驻服务
-- 多模态数据数据持久化，解耦到oss
+### Out of Scope（明确推迟）
+- 邮箱验证激活、密码修改、邮箱修改、令牌刷新、登出失效（不引入 Redis、不引入 SMTP）
+- PDF 报告生成
+- 多实例水平扩展、Redis/MQ 任务队列（架构上预留 `TaskQueue` 接口切换点）
+- 任务真取消（依赖 ModelServer 提供取消接口）
+- 历史记录多维筛选（仅分页）
+- 跨模态（crossmodal）检测、进度百分比字段
+- 前端能力、模型能力、模型服务生命周期
 
-## API文档
-### dfkgo-前端/客户端
+## 关键架构约定
+- **API 路径前缀**：`/api`
+- **响应格式**：统一 envelope `{code, message, data, timestamp}`，`code:0` 成功，非 0 为 6 位业务错误码
+- **对外 ID**：`file_<uuid>` / `task_<uuid>`，DB 内部仍用自增 BIGINT
+- **JWT**：HS256，24h 有效期，本期不实现失效机制
+- **任务队列**：内存 buffered channel + worker pool（默认 4），启动时扫库恢复孤儿任务
+- **ModelServer 调用**：HTTP JSON `{oss_url, task_id}`，按 modality 路由到 `/api/detect/{image|video|audio}`
+- **数据表**：users / files / tasks 三张表（详见设计文档第 4 节）
+- **OSS 上传**：STS 临时凭证模式（前端已实现，沿用），dfkgo 配 RAM Role + 长期 AK/SK
+
+## 前置外部依赖
+- ModelServer 接口改造：提供按模态分类的 3 个端点，接收 `{oss_url, task_id}` JSON
+- ModelServer 具备目标 OSS Bucket 只读权限
+
+## API 文档
+### dfkgo ↔ 前端/客户端
 [docs/api.md]
 
-### dfkgo-ModelServer
+### dfkgo ↔ ModelServer
 [docs/model_server_api.md]
 
+### OSS Go SDK 用法
+[docs/aliyun_oss_go_sdk.md]
+
+## hook
+每轮回答前加入前缀 **，以告知用户你已读取此文档并充分理解
