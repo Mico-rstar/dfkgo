@@ -116,8 +116,10 @@ func buildServer() *Server {
 	if err != nil {
 		panic("failed to connect database: " + err.Error())
 	}
-	// TODO: 替换为真实 OSSService 实现
-	ossSvc := oss.NewMockOSSService()
+	ossSvc, err := oss.NewOSSService(cfg)
+	if err != nil {
+		panic("failed to init OSS service: " + err.Error())
+	}
 	return NewServer(db, maker, cfg, ossSvc)
 }
 
