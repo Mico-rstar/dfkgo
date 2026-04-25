@@ -11,6 +11,7 @@ import (
 	"dfkgo/service/oss"
 	taskservice "dfkgo/service/task"
 	usersvc "dfkgo/service/user"
+	"log"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -116,9 +117,11 @@ func buildServer() *Server {
 	if err != nil {
 		panic("failed to connect database: " + err.Error())
 	}
-	ossSvc, err := oss.NewOSSService(cfg)
+	var ossSvc oss.OSSService
+	ossSvc, err = oss.NewOSSService(cfg)
 	if err != nil {
-		panic("failed to init OSS service: " + err.Error())
+		log.Printf("[WARN] OSS service init failed: %v, using mock", err)
+		ossSvc = oss.NewMockOSSService()
 	}
 	return NewServer(db, maker, cfg, ossSvc)
 }

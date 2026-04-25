@@ -22,6 +22,10 @@ func InitDB(driver, source string) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+	// AutoMigrate 建表
+	if err := db.AutoMigrate(&model.User{}, &model.File{}, &model.Task{}); err != nil {
+		return nil, err
+	}
 	return db, nil
 }
 
