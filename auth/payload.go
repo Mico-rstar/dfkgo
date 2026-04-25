@@ -8,17 +8,17 @@ import (
 )
 
 type Payload struct {
-	ID uuid.UUID `json:"id"`
-	// Type      TokenType `json:"token_type"`
-	Username string `json:"username"`
-	// Role      string    `json:"role"`
+	ID       uuid.UUID       `json:"id"`
+	UserID   uint64          `json:"user_id"`
+	Username string          `json:"username"`
 	IssuedAt  jwt.NumericDate `json:"issued_at"`
 	ExpiredAt jwt.NumericDate `json:"expired_at"`
 }
 
-func NewPayload(username string, duration time.Duration) *Payload {
+func NewPayload(userID uint64, username string, duration time.Duration) *Payload {
 	return &Payload{
 		ID:        uuid.New(),
+		UserID:    userID,
 		Username:  username,
 		IssuedAt:  *jwt.NewNumericDate(time.Now()),
 		ExpiredAt: *jwt.NewNumericDate(time.Now().Add(duration)),

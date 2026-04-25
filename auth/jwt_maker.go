@@ -1,42 +1,45 @@
 package auth
 
 import (
-	"dfkgo/config"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var key []byte
-
-func init() {
-	key = []byte(config.GetConfig().JwtPriKey)
-	if len(key) == 0 {
-		panic("JWT_PRIVATE_KEY is not set")
-	}
-}
-
 type JwtMaker struct {
+	key []byte
 }
 
 func NewJwtMaker() *JwtMaker {
 	return &JwtMaker{}
 }
 
-func (j *JwtMaker) MakeToken(username string, duration time.Duration) (string, error) {
+func NewJwtMakerWithKey(key string) *JwtMaker {
+	return &JwtMaker{key: []byte(key)}
+}
+
+func (j *JwtMaker) getKey() []byte {
+	if len(j.key) > 0 {
+		return j.key
+	}
+	// lazy load from config
+	cfg := loadConfigKey()
+	j.key = []byte(cfg)
+	return j.key
+}
+
+func (j *JwtMaker) MakeToken(userID uint64, username string, duration time.Duration) (string, error) {
 	if username == "" {
 		return "", nil
 	}
-	payload := NewPayload(username, duration)
+	payload := NewPayload(userID, username, duration)
 	t := jwt.NewWithClaims(jwt.SigningMethodHS256, payload)
-	return t.SignedString(key)
+	return t.SignedString(j.getKey())
 }
 
-
-// Verification failed case: expired or invalid token
 func (j *JwtMaker) VerifyToken(tokenString string) (*Payload, error) {
-	// verify the signature
-	token, err :=jwt.ParseWithClaims(tokenString, &Payload{}, func(t *jwt.Token) (any, error) {
+	key := j.getKey()
+	token, err := jwt.ParseWithClaims(tokenString, &Payload{}, func(t *jwt.Token) (any, error) {
 		return key, nil
 	})
 	if err != nil {
@@ -47,10 +50,15 @@ func (j *JwtMaker) VerifyToken(tokenString string) (*Payload, error) {
 	if !ok || !token.Valid {
 		return &Payload{}, jwt.ErrTokenInvalidClaims
 	}
-	// verify the payload
 	err = payload.Valid()
 	if err != nil {
 		return &Payload{}, err
 	}
 	return payload, nil
+}
+
+func loadConfigKey() string {
+	// Import config lazily to avoid circular init
+	// This will be called only when key is not set via constructor
+	return getJwtKeyFromConfig()
 }
