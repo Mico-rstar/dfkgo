@@ -7,6 +7,7 @@ import (
 )
 
 func TestGetConfig(t *testing.T) {
+	LoadConfig("..")
 	config := GetConfig()
 	assert.NotEmpty(t, config.JwtPriKey)
 	assert.Equal(t, "bcuwehjfihafjkbjnacc", config.JwtPriKey)
