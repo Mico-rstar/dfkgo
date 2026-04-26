@@ -106,7 +106,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           source: docker-compose.yml
-          target: /opt/dfkgo
+          target: ~/dfkgo
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
@@ -115,7 +115,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
-            cd /opt/dfkgo
+            cd ~/dfkgo
             IMAGE=$(echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
             export DFKGO_IMAGE=$IMAGE:latest
             docker compose down dfkgo
