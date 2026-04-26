@@ -4,7 +4,6 @@ import (
 	"dfkgo/api/response"
 	"dfkgo/entity"
 	"dfkgo/errcode"
-	"dfkgo/repository"
 	taskservice "dfkgo/service/task"
 	"strconv"
 
@@ -13,11 +12,10 @@ import (
 
 type HistoryHandler struct {
 	taskService *taskservice.TaskService
-	fileRepo    *repository.FileRepo
 }
 
-func NewHistoryHandler(taskService *taskservice.TaskService, fileRepo *repository.FileRepo) *HistoryHandler {
-	return &HistoryHandler{taskService: taskService, fileRepo: fileRepo}
+func NewHistoryHandler(taskService *taskservice.TaskService) *HistoryHandler {
+	return &HistoryHandler{taskService: taskService}
 }
 
 func (h *HistoryHandler) ListHistory(c *gin.Context) {
@@ -35,29 +33,25 @@ func (h *HistoryHandler) ListHistory(c *gin.Context) {
 		limit = 100
 	}
 
-	tasks, total, err := h.taskService.ListHistory(userID, page, limit)
+	historyItems, total, err := h.taskService.ListHistoryWithFiles(userID, page, limit)
 	if err != nil {
 		response.FailWithErr(c, err)
 		return
 	}
 
-	items := make([]entity.HistoryItem, 0, len(tasks))
-	for _, t := range tasks {
+	items := make([]entity.HistoryItem, 0, len(historyItems))
+	for _, hi := range historyItems {
 		item := entity.HistoryItem{
-			TaskId:    t.TaskUID,
-			Modality:  t.Modality,
-			Status:    t.Status,
-			CreatedAt: t.CreatedAt.Unix(),
+			TaskId:    hi.Task.TaskUID,
+			Modality:  hi.Task.Modality,
+			Status:    hi.Task.Status,
+			CreatedAt: hi.Task.CreatedAt.Unix(),
+			FileName:  hi.FileName,
+			FileSize:  hi.FileSize,
 		}
-		if t.CompletedAt.Valid {
-			ts := t.CompletedAt.Time.Unix()
+		if hi.Task.CompletedAt.Valid {
+			ts := hi.Task.CompletedAt.Time.Unix()
 			item.CompletedAt = &ts
-		}
-		// 查文件信息
-		file, err := h.fileRepo.FindByID(t.FileID)
-		if err == nil {
-			item.FileName = file.FileName
-			item.FileSize = file.FileSize
 		}
 		items = append(items, item)
 	}

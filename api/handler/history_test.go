@@ -43,7 +43,7 @@ func setupHistoryTestRouter(t *testing.T) (*gin.Engine, *repository.FileRepo, st
 	taskGroup.POST("", taskHandler.CreateTask)
 
 	// 注册 history 路由
-	historyHandler := NewHistoryHandler(taskSvc, fileRepo)
+	historyHandler := NewHistoryHandler(taskSvc)
 	historyGroup := protected.Group("/history")
 	historyGroup.GET("", historyHandler.ListHistory)
 	historyGroup.DELETE("/:taskId", historyHandler.DeleteHistory)

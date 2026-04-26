@@ -39,3 +39,12 @@ func (r *FileRepo) FindByID(id uint64) (*model.File, error) {
 	err := r.db.First(&file, id).Error
 	return &file, err
 }
+
+func (r *FileRepo) FindByIDs(ids []uint64) ([]model.File, error) {
+	var files []model.File
+	if len(ids) == 0 {
+		return files, nil
+	}
+	err := r.db.Where("id IN ?", ids).Find(&files).Error
+	return files, err
+}

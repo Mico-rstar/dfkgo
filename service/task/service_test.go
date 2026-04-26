@@ -169,10 +169,10 @@ func TestTaskService_ListHistory(t *testing.T) {
 
 	svc.CreateTask(1, "file_abc123", "image")
 
-	tasks, total, err := svc.ListHistory(1, 1, 10)
+	items, total, err := svc.ListHistoryWithFiles(1, 1, 10)
 	require.NoError(t, err)
 	require.Equal(t, int64(1), total)
-	require.Len(t, tasks, 1)
+	require.Len(t, items, 1)
 }
 
 func TestTaskService_DeleteHistory(t *testing.T) {
@@ -185,10 +185,10 @@ func TestTaskService_DeleteHistory(t *testing.T) {
 	require.NoError(t, err)
 
 	// 软删后不应出现在列表中
-	tasks, total, err := svc.ListHistory(1, 1, 10)
+	items, total, err := svc.ListHistoryWithFiles(1, 1, 10)
 	require.NoError(t, err)
 	require.Equal(t, int64(0), total)
-	require.Len(t, tasks, 0)
+	require.Len(t, items, 0)
 }
 
 func TestTaskService_BatchDeleteHistory(t *testing.T) {

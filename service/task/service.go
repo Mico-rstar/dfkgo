@@ -77,6 +77,9 @@ func (s *TaskService) GetTaskResult(userID uint64, taskUID string) (*model.Task,
 	if err != nil {
 		return nil, errcode.ErrTaskNotFound
 	}
+	if task.Status != "completed" && task.Status != "failed" {
+		return nil, errcode.ErrTaskNotCompleted
+	}
 	return task, nil
 }
 
@@ -110,14 +113,40 @@ func (s *TaskService) RecoverOrphanTasks() error {
 	return nil
 }
 
-// ListHistory 分页查询历史
-func (s *TaskService) ListHistory(userID uint64, page, limit int) ([]model.Task, int64, error) {
+type HistoryItemData struct {
+	Task     model.Task
+	FileName string
+	FileSize int64
+}
+
+// ListHistoryWithFiles 分页查询历史并批量关联文件信息
+func (s *TaskService) ListHistoryWithFiles(userID uint64, page, limit int) ([]HistoryItemData, int64, error) {
 	offset := (page - 1) * limit
 	tasks, total, err := s.taskRepo.ListByUser(userID, offset, limit)
 	if err != nil {
 		return nil, 0, errcode.ErrDBError
 	}
-	return tasks, total, nil
+
+	fileIDs := make([]uint64, 0, len(tasks))
+	for _, t := range tasks {
+		fileIDs = append(fileIDs, t.FileID)
+	}
+	files, _ := s.fileRepo.FindByIDs(fileIDs)
+	fileMap := make(map[uint64]model.File, len(files))
+	for _, f := range files {
+		fileMap[f.ID] = f
+	}
+
+	items := make([]HistoryItemData, 0, len(tasks))
+	for _, t := range tasks {
+		item := HistoryItemData{Task: t}
+		if f, ok := fileMap[t.FileID]; ok {
+			item.FileName = f.FileName
+			item.FileSize = f.FileSize
+		}
+		items = append(items, item)
+	}
+	return items, total, nil
 }
 
 // DeleteHistory 单条软删
@@ -137,17 +166,15 @@ func (s *TaskService) GetStats(userID uint64) (total int64, byModality map[strin
 		return 0, nil, nil, errcode.ErrDBError
 	}
 	byCategory = make(map[string]int64)
-	tasks, _, err := s.taskRepo.ListByUser(userID, 0, 10000)
+	results, err := s.taskRepo.FindCompletedResultsForUser(userID)
 	if err != nil {
 		return total, byModality, byCategory, nil
 	}
-	for _, t := range tasks {
-		if t.Status == "completed" && t.ResultJSON != nil {
-			var result map[string]any
-			if err := json.Unmarshal([]byte(*t.ResultJSON), &result); err == nil {
-				if cat, ok := result["category"].(string); ok {
-					byCategory[cat]++
-				}
+	for _, raw := range results {
+		var result map[string]any
+		if err := json.Unmarshal([]byte(raw), &result); err == nil {
+			if cat, ok := result["category"].(string); ok {
+				byCategory[cat]++
 			}
 		}
 	}

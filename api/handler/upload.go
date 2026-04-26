@@ -19,7 +19,7 @@ func NewUploadHandler(fileService *filesvc.FileService) *UploadHandler {
 }
 
 func (h *UploadHandler) InitUpload(c *gin.Context) {
-	uid := getUserID(c)
+	uid := c.GetUint64("userID")
 	var req entity.UploadInitRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.FailWithErr(c, errcode.ErrFileTypeNotSupported)
@@ -38,7 +38,7 @@ func (h *UploadHandler) InitUpload(c *gin.Context) {
 }
 
 func (h *UploadHandler) UploadCallback(c *gin.Context) {
-	uid := getUserID(c)
+	uid := c.GetUint64("userID")
 	var req entity.UploadCallbackRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.FailWithErr(c, errcode.ErrFileIDNotFound)

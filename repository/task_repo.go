@@ -118,3 +118,12 @@ func (r *TaskRepo) StatsForUser(userID uint64) (total int64, byModality map[stri
 	}
 	return
 }
+
+func (r *TaskRepo) FindCompletedResultsForUser(userID uint64) ([]string, error) {
+	var results []string
+	err := r.db.Model(&model.Task{}).
+		Select("result_json").
+		Where("user_id = ? AND deleted_at IS NULL AND status = ? AND result_json IS NOT NULL", userID, "completed").
+		Pluck("result_json", &results).Error
+	return results, err
+}

@@ -19,7 +19,7 @@ func NewUserHandler(userService *usersvc.UserService) *UserHandler {
 }
 
 func (h *UserHandler) GetProfile(c *gin.Context) {
-	uid := getUserID(c)
+	uid := c.GetUint64("userID")
 	profile, err := h.userService.GetProfile(uid)
 	if err != nil {
 		response.FailWithErr(c, err)
@@ -29,7 +29,7 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 }
 
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
-	uid := getUserID(c)
+	uid := c.GetUint64("userID")
 	var req entity.UpdateProfileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.FailWithErr(c, errcode.ErrInternal)
@@ -43,7 +43,7 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 }
 
 func (h *UserHandler) InitAvatarUpload(c *gin.Context) {
-	uid := getUserID(c)
+	uid := c.GetUint64("userID")
 	var req entity.AvatarUploadInitRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.FailWithErr(c, errcode.ErrInvalidMimeType)
@@ -58,7 +58,7 @@ func (h *UserHandler) InitAvatarUpload(c *gin.Context) {
 }
 
 func (h *UserHandler) AvatarUploadCallback(c *gin.Context) {
-	uid := getUserID(c)
+	uid := c.GetUint64("userID")
 	var req entity.AvatarUploadCallbackRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.FailWithErr(c, errcode.ErrInternal)
@@ -73,16 +73,11 @@ func (h *UserHandler) AvatarUploadCallback(c *gin.Context) {
 }
 
 func (h *UserHandler) FetchAvatar(c *gin.Context) {
-	uid := getUserID(c)
+	uid := c.GetUint64("userID")
 	avatarUrl, err := h.userService.FetchAvatar(uid)
 	if err != nil {
 		response.FailWithErr(c, err)
 		return
 	}
 	response.OK(c, entity.FetchAvatarResponse{AvatarUrl: avatarUrl})
-}
-
-func getUserID(c *gin.Context) uint64 {
-	userID, _ := c.Get("userID")
-	return userID.(uint64)
 }

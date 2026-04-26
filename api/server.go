@@ -127,7 +127,8 @@ func buildServer() *Server {
 }
 
 func (s *Server) setupRoutes() {
-	router := gin.Default()
+	router := gin.New()
+	router.Use(middleware.Logger())
 	router.Use(middleware.Recovery())
 
 	api := router.Group("/api")
@@ -139,12 +140,13 @@ func (s *Server) setupRoutes() {
 		authGroup.POST("/register", authHandler.Register)
 		authGroup.POST("/login", authHandler.Login)
 
+		h := handler.NewHealthHandler()
+		api.GET("/health", h.Health)
+
 		// 鉴权路由
 		protected := api.Group("")
 		protected.Use(middleware.AuthMiddleware(s.maker))
 		{
-			h := handler.NewHealthHandler()
-			protected.GET("/health", h.Health)
 
 			// 用户域
 			userService := usersvc.NewUserService(s.userRepo, s.ossService, s.config)
@@ -173,7 +175,7 @@ func (s *Server) setupRoutes() {
 
 			// 历史域
 			historyGroup := protected.Group("/history")
-			historyHandler := handler.NewHistoryHandler(s.taskService, s.fileRepo)
+			historyHandler := handler.NewHistoryHandler(s.taskService)
 			historyGroup.GET("", historyHandler.ListHistory)
 			historyGroup.DELETE("/:taskId", historyHandler.DeleteHistory)
 			historyGroup.POST("/batch-delete", historyHandler.BatchDeleteHistory)
