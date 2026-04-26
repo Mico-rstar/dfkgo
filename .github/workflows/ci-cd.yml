@@ -81,10 +81,17 @@ jobs:
             type=sha,prefix=
             type=raw,value=latest
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -118,6 +125,6 @@ jobs:
             cd ~/dfkgo
             IMAGE=$(echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
             export DFKGO_IMAGE=$IMAGE:latest
-            docker compose down dfkgo
-            docker compose pull dfkgo
+            docker rm -f dfkgo dfkgo-mysql 2>/dev/null || true
+            docker compose pull
             docker compose up -d

@@ -1,6 +1,7 @@
 services:
   mysql:
-    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/mysql:8.0
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/arm64v8/mysql:8.0
+    platform: linux/arm64
     container_name: dfkgo-mysql
     restart: unless-stopped
     environment:
