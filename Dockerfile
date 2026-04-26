@@ -21,7 +21,6 @@ ENV TZ=Asia/Shanghai
 WORKDIR /app
 
 COPY --from=builder /app/dfkgo .
-COPY --from=builder /app/app.env .
 
 EXPOSE 8888
 
