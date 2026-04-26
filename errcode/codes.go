@@ -21,11 +21,12 @@ var (
 
 // 文件域 4013xx
 var (
-	ErrFileTypeNotSupported = New(401301, "文件类型不支持")
-	ErrFileSizeExceeded     = New(401302, "文件大小超出限制")
-	ErrFileOSSNotFound      = New(401303, "文件未在 OSS 上找到")
-	ErrFileIDNotFound       = New(401304, "fileId 不存在")
-	ErrFileExists           = New(401018, "文件已存在") // 历史兼容码
+	ErrFileTypeNotSupported   = New(401301, "文件类型不支持")
+	ErrFileSizeExceeded       = New(401302, "文件大小超出限制")
+	ErrFileOSSNotFound        = New(401303, "文件未在 OSS 上找到")
+	ErrFileIDNotFound         = New(401304, "fileId 不存在")
+	ErrFileUploadNotCompleted = New(401305, "文件上传未完成")
+	ErrFileExists             = New(401018, "文件已存在") // 历史兼容码
 )
 
 // 任务域 4014xx

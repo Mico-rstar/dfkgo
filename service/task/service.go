@@ -32,7 +32,7 @@ func (s *TaskService) CreateTask(userID uint64, fileID string, modality string) 
 		return "", errcode.ErrFileIDNotFound
 	}
 	if file.UploadStatus != "completed" {
-		return "", errcode.ErrFileIDNotFound
+		return "", errcode.ErrFileUploadNotCompleted
 	}
 
 	// 2. 校验 modality

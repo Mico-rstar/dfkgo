@@ -52,13 +52,35 @@ func (s *FileService) InitUpload(userID uint64, req *entity.UploadInitRequest) (
 		return nil, errcode.ErrFileSizeExceeded
 	}
 
-	// 查秒传
+	// 查秒传 / 复用已有记录
 	existing, err := s.fileRepo.FindByUserAndMD5(userID, req.MD5)
-	if err == nil && existing.UploadStatus == "completed" {
+	if err == nil {
+		if existing.UploadStatus == "completed" {
+			// 秒传命中
+			return &entity.UploadInitResponse{
+				FileId: existing.FileUID,
+				Hit:    true,
+				OssUrl: existing.OSSURL,
+			}, nil
+		}
+		// 已有 pending 记录，复用同一 fileId，重新签发 STS
+		creds, stsErr := s.ossService.IssueSTSCredentials(context.Background(), s.config.OSSBucketFiles, existing.OSSObjectKey, s.config.OSSStsDurationSeconds)
+		if stsErr != nil {
+			return nil, errcode.ErrOSSError
+		}
 		return &entity.UploadInitResponse{
 			FileId: existing.FileUID,
-			Hit:    true,
-			OssUrl: existing.OSSURL,
+			Hit:    false,
+			STS: &entity.STSInfo{
+				AccessKeyID:     creds.AccessKeyID,
+				AccessKeySecret: creds.AccessKeySecret,
+				SecurityToken:   creds.SecurityToken,
+				Expiration:      creds.Expiration,
+				Bucket:          s.config.OSSBucketFiles,
+				Region:          s.config.OSSRegion,
+				Endpoint:        fmt.Sprintf("oss-%s.aliyuncs.com", s.config.OSSRegion),
+				ObjectKey:       existing.OSSObjectKey,
+			},
 		}, nil
 	}
 
