@@ -1,6 +1,6 @@
 services:
   mysql:
-    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/arm64v8/mysql:8.0
+    image: ghcr.io/linuxserver/mariadb:10.11.6
     platform: linux/arm64
     container_name: dfkgo-mysql
     restart: unless-stopped
@@ -15,9 +15,9 @@ services:
       - mysql_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+      interval: 10s
+      timeout: 5s
+      retries: 15
 
   dfkgo:
     image: ${DFKGO_IMAGE:-ghcr.io/mico-rstar/dfkgo:latest}
