@@ -97,6 +97,17 @@ jobs:
     if: github.ref == 'refs/heads/main'
     environment: production
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy docker-compose.yml to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: docker-compose.yml
+          target: /opt/dfkgo
+
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
         with:
@@ -104,13 +115,9 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
+            cd /opt/dfkgo
             IMAGE=$(echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
-            docker pull $IMAGE:latest
-            docker stop dfkgo || true
-            docker rm dfkgo || true
-            docker run -d \
-              --name dfkgo \
-              --restart unless-stopped \
-              -p 8888:8888 \
-              --env-file /opt/dfkgo/app.env \
-              $IMAGE:latest
+            export DFKGO_IMAGE=$IMAGE:latest
+            docker compose down dfkgo
+            docker compose pull dfkgo
+            docker compose up -d
