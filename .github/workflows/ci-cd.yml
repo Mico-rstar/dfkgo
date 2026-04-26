@@ -104,7 +104,8 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            IMAGE=$(echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
+            docker pull $IMAGE:latest
             docker stop dfkgo || true
             docker rm dfkgo || true
             docker run -d \
@@ -112,4 +113,4 @@ jobs:
               --restart unless-stopped \
               -p 8888:8888 \
               --env-file /opt/dfkgo/app.env \
-              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+              $IMAGE:latest
