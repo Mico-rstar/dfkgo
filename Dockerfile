@@ -10,7 +10,7 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o dfkgo main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -tags production -ldflags="-s -w" -o dfkgo main.go
 
 # ---- Runtime Stage ----
 FROM alpine:3.21

@@ -2,40 +2,37 @@ package repository
 
 import (
 	"dfkgo/model"
+	"fmt"
 
 	"gorm.io/driver/mysql"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
+
+type dialectorFactory func(source string) gorm.Dialector
+
+var extraDialectors = map[string]dialectorFactory{}
+
+func registerDialector(name string, factory dialectorFactory) {
+	extraDialectors[name] = factory
+}
 
 func InitDB(driver, source string) (*gorm.DB, error) {
 	var dialector gorm.Dialector
 	switch driver {
 	case "mysql":
 		dialector = mysql.Open(source)
-	case "sqlite":
-		dialector = sqlite.Open(source)
 	default:
-		dialector = mysql.Open(source)
+		if factory, ok := extraDialectors[driver]; ok {
+			dialector = factory(source)
+		} else {
+			return nil, fmt.Errorf("unsupported db driver: %s", driver)
+		}
 	}
 	db, err := gorm.Open(dialector, &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
-	// AutoMigrate 建表
 	if err := db.AutoMigrate(&model.User{}, &model.File{}, &model.Task{}); err != nil {
-		return nil, err
-	}
-	return db, nil
-}
-
-func InitTestDB() (*gorm.DB, error) {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		return nil, err
-	}
-	err = db.AutoMigrate(&model.User{}, &model.File{}, &model.Task{})
-	if err != nil {
 		return nil, err
 	}
 	return db, nil
