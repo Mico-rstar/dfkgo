@@ -171,8 +171,9 @@ func TestTaskRepo_SoftDelete(t *testing.T) {
 	err := taskRepo.Create(task)
 	require.NoError(t, err)
 
-	err = taskRepo.SoftDelete("task_del", user.ID)
+	affected, err := taskRepo.SoftDelete("task_del", user.ID)
 	assert.NoError(t, err)
+	assert.Equal(t, int64(1), affected)
 
 	// After soft delete, should not appear in ListByUser
 	tasks, total, err := taskRepo.ListByUser(user.ID, 0, 10)

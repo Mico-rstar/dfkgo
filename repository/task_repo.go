@@ -68,9 +68,10 @@ func (r *TaskRepo) ListByUser(userID uint64, offset, limit int) ([]model.Task, i
 	return tasks, total, err
 }
 
-func (r *TaskRepo) SoftDelete(taskUID string, userID uint64) error {
+func (r *TaskRepo) SoftDelete(taskUID string, userID uint64) (int64, error) {
 	now := time.Now()
-	return r.db.Model(&model.Task{}).Where("task_uid = ? AND user_id = ?", taskUID, userID).Update("deleted_at", &now).Error
+	result := r.db.Model(&model.Task{}).Where("task_uid = ? AND user_id = ?", taskUID, userID).Update("deleted_at", &now)
+	return result.RowsAffected, result.Error
 }
 
 func (r *TaskRepo) BatchSoftDelete(taskUIDs []string, userID uint64) (int64, error) {

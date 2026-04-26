@@ -151,7 +151,14 @@ func (s *TaskService) ListHistoryWithFiles(userID uint64, page, limit int) ([]Hi
 
 // DeleteHistory 单条软删
 func (s *TaskService) DeleteHistory(userID uint64, taskUID string) error {
-	return s.taskRepo.SoftDelete(taskUID, userID)
+	affected, err := s.taskRepo.SoftDelete(taskUID, userID)
+	if err != nil {
+		return errcode.ErrDBError
+	}
+	if affected == 0 {
+		return errcode.ErrTaskNotFound
+	}
+	return nil
 }
 
 // BatchDeleteHistory 批量软删
