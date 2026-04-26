@@ -2,8 +2,8 @@ package errcode
 
 // 认证/授权 4011xx
 var (
-	ErrInvalidEmail    = New(400001, "邮箱格式不合法")
-	ErrInvalidPassword = New(400002, "密码不符合规则")
+	ErrInvalidEmail    = New(401101, "邮箱格式不合法")
+	ErrInvalidPassword = New(401102, "密码不符合规则")
 	ErrUserNotFound    = New(401004, "用户不存在")
 	ErrWrongPassword   = New(401005, "用户密码错误，请重新输入")
 	ErrUserExists      = New(401009, "用户已存在")
@@ -25,7 +25,7 @@ var (
 	ErrFileSizeExceeded     = New(401302, "文件大小超出限制")
 	ErrFileOSSNotFound      = New(401303, "文件未在 OSS 上找到")
 	ErrFileIDNotFound       = New(401304, "fileId 不存在")
-	ErrFileExists           = New(401018, "文件已存在")
+	ErrFileExists           = New(401018, "文件已存在") // 历史兼容码
 )
 
 // 任务域 4014xx
