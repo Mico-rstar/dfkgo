@@ -24,5 +24,15 @@ func InitTestDB() (*gorm.DB, error) {
 	if dsn == "" {
 		dsn = "dfkgo:dfkgo123@tcp(127.0.0.1:3306)/dfkgo_test?charset=utf8mb4&parseTime=true&loc=Local"
 	}
-	return InitDB("mysql", dsn)
+	db, err := InitDB("mysql", dsn)
+	if err != nil {
+		return nil, err
+	}
+	// 每次测试前清空表数据并重置自增 ID
+	db.Exec("SET FOREIGN_KEY_CHECKS = 0")
+	db.Exec("TRUNCATE TABLE tasks")
+	db.Exec("TRUNCATE TABLE files")
+	db.Exec("TRUNCATE TABLE users")
+	db.Exec("SET FOREIGN_KEY_CHECKS = 1")
+	return db, nil
 }

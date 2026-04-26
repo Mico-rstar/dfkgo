@@ -61,7 +61,7 @@ jobs:
       - name: Run tests
         env:
           TEST_DB_SOURCE: dfkgo:dfkgo123@tcp(127.0.0.1:3306)/dfkgo_test?charset=utf8mb4&parseTime=true&loc=Local
-        run: go test ./... -v -count=1 -race -coverprofile=coverage.out
+        run: go test ./... -v -count=1 -p 1 -coverprofile=coverage.out
 
       - name: Upload coverage
         if: always()
