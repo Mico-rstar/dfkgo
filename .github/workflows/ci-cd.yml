@@ -1,0 +1,117 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ---- 集成测试 ----
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Create test config
+        run: |
+          cat > app.env << 'EOF'
+          SERVER_PORT=:8888
+          JWT_PRIVATE_KEY=test-secret-key-for-ci
+          JWT_DURATION_HOURS=24
+          DB_DRIVER=sqlite
+          DB_SOURCE=:memory:
+          OSS_REGION=cn-hangzhou
+          OSS_ENDPOINT=oss-cn-hangzhou.aliyuncs.com
+          OSS_BUCKET_FILES=dfkgo-files
+          OSS_BUCKET_AVATARS=dfkgo-avatars
+          OSS_ACCESS_KEY_ID=fake
+          OSS_ACCESS_KEY_SECRET=fake
+          OSS_STS_ROLE_ARN=fake
+          OSS_STS_DURATION_SECONDS=900
+          MODEL_SERVER_BASE_URL=http://localhost:9000
+          MODEL_SERVER_TIMEOUT_SECONDS=300
+          TASK_WORKER_POOL_SIZE=4
+          TASK_QUEUE_CAPACITY=1000
+          EOF
+
+      - name: Run tests
+        run: go test ./... -v -count=1 -race -coverprofile=coverage.out
+
+      - name: Upload coverage
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.out
+
+  # ---- 构建并推送 Docker 镜像 ----
+  build-and-push:
+    name: Build & Push Image
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  # ---- 部署 ----
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            docker stop dfkgo || true
+            docker rm dfkgo || true
+            docker run -d \
+              --name dfkgo \
+              --restart unless-stopped \
+              -p 8888:8888 \
+              --env-file /opt/dfkgo/app.env \
+              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest

@@ -1,0 +1,9 @@
+.git
+.github
+.gitignore
+*.md
+docs/
+tmp/
+dfkgo
+*.test
+.env.local
