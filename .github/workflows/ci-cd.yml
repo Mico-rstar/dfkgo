@@ -13,6 +13,21 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: dfkgo123
+          MYSQL_DATABASE: dfkgo_test
+          MYSQL_USER: dfkgo
+          MYSQL_PASSWORD: dfkgo123
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - uses: actions/checkout@v4
 
@@ -27,8 +42,8 @@ jobs:
           SERVER_PORT=:8888
           JWT_PRIVATE_KEY=test-secret-key-for-ci
           JWT_DURATION_HOURS=24
-          DB_DRIVER=sqlite
-          DB_SOURCE=:memory:
+          DB_DRIVER=mysql
+          DB_SOURCE=dfkgo:dfkgo123@tcp(127.0.0.1:3306)/dfkgo_test?charset=utf8mb4&parseTime=true&loc=Local
           OSS_REGION=cn-hangzhou
           OSS_ENDPOINT=oss-cn-hangzhou.aliyuncs.com
           OSS_BUCKET_FILES=dfkgo-files
@@ -44,6 +59,8 @@ jobs:
           EOF
 
       - name: Run tests
+        env:
+          TEST_DB_SOURCE: dfkgo:dfkgo123@tcp(127.0.0.1:3306)/dfkgo_test?charset=utf8mb4&parseTime=true&loc=Local
         run: go test ./... -v -count=1 -race -coverprofile=coverage.out
 
       - name: Upload coverage

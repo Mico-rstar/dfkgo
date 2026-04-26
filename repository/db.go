@@ -2,33 +2,14 @@ package repository
 
 import (
 	"dfkgo/model"
-	"fmt"
+	"os"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
-type dialectorFactory func(source string) gorm.Dialector
-
-var extraDialectors = map[string]dialectorFactory{}
-
-func registerDialector(name string, factory dialectorFactory) {
-	extraDialectors[name] = factory
-}
-
 func InitDB(driver, source string) (*gorm.DB, error) {
-	var dialector gorm.Dialector
-	switch driver {
-	case "mysql":
-		dialector = mysql.Open(source)
-	default:
-		if factory, ok := extraDialectors[driver]; ok {
-			dialector = factory(source)
-		} else {
-			return nil, fmt.Errorf("unsupported db driver: %s", driver)
-		}
-	}
-	db, err := gorm.Open(dialector, &gorm.Config{})
+	db, err := gorm.Open(mysql.Open(source), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
@@ -36,4 +17,12 @@ func InitDB(driver, source string) (*gorm.DB, error) {
 		return nil, err
 	}
 	return db, nil
+}
+
+func InitTestDB() (*gorm.DB, error) {
+	dsn := os.Getenv("TEST_DB_SOURCE")
+	if dsn == "" {
+		dsn = "dfkgo:dfkgo123@tcp(127.0.0.1:3306)/dfkgo_test?charset=utf8mb4&parseTime=true&loc=Local"
+	}
+	return InitDB("mysql", dsn)
 }
