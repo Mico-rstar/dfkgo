@@ -128,6 +128,7 @@ func buildServer() *Server {
 
 func (s *Server) setupRoutes() {
 	router := gin.New()
+	router.Use(middleware.CORS())
 	router.Use(middleware.Logger())
 	router.Use(middleware.Recovery())
 
