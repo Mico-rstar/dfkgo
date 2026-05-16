@@ -23,8 +23,7 @@ services:
     image: ${DFKGO_IMAGE:-ghcr.io/mico-rstar/dfkgo:latest}
     container_name: dfkgo
     restart: unless-stopped
-    ports:
-      - "8888:8888"
+    network_mode: host
     volumes:
       - ./app.env:/app/app.env:ro
     depends_on:
