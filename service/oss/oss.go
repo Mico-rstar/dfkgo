@@ -13,4 +13,5 @@ type OSSService interface {
 	IssueSTSCredentials(ctx context.Context, bucket, objectKeyPrefix string, durationSec int) (*STSCredentials, error)
 	HeadObject(ctx context.Context, bucket, objectKey string) (bool, error)
 	BuildOssURL(bucket, objectKey string) string
+	SignURL(ctx context.Context, bucket, objectKey string, expireSec int64) (string, error)
 }

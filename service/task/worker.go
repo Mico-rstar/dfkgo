@@ -3,29 +3,34 @@ package task
 import (
 	"context"
 	"dfkgo/repository"
+	"dfkgo/service/oss"
 	"fmt"
 	"log"
 	"sync"
 	"time"
 )
 
+const signURLExpireSec = 3600 // 签名 URL 有效期 1 小时
+
 type WorkerPool struct {
 	queue      TaskQueue
 	taskRepo   *repository.TaskRepo
 	fileRepo   *repository.FileRepo
 	client     ModelClient
+	ossService oss.OSSService
 	poolSize   int
 	wg         sync.WaitGroup
 	cancelFunc context.CancelFunc
 }
 
-func NewWorkerPool(queue TaskQueue, taskRepo *repository.TaskRepo, fileRepo *repository.FileRepo, client ModelClient, poolSize int) *WorkerPool {
+func NewWorkerPool(queue TaskQueue, taskRepo *repository.TaskRepo, fileRepo *repository.FileRepo, client ModelClient, ossService oss.OSSService, poolSize int) *WorkerPool {
 	return &WorkerPool{
-		queue:    queue,
-		taskRepo: taskRepo,
-		fileRepo: fileRepo,
-		client:   client,
-		poolSize: poolSize,
+		queue:      queue,
+		taskRepo:   taskRepo,
+		fileRepo:   fileRepo,
+		client:     client,
+		ossService: ossService,
+		poolSize:   poolSize,
 	}
 }
 
@@ -80,16 +85,22 @@ func (wp *WorkerPool) processTask(ctx context.Context, workerID int, taskUID str
 		return
 	}
 
-	// 3. 查文件获取 OSS URL
+	// 3. 查文件获取 OSS 信息并生成签名 URL
 	file, err := wp.fileRepo.FindByID(task.FileID)
 	if err != nil {
 		wp.taskRepo.UpdateFailed(task.ID, fmt.Sprintf("file not found: %v", err), time.Now())
 		return
 	}
 
-	// 4. 调 ModelServer
+	signedURL, err := wp.ossService.SignURL(ctx, file.OSSBucket, file.OSSObjectKey, signURLExpireSec)
+	if err != nil {
+		wp.taskRepo.UpdateFailed(task.ID, fmt.Sprintf("sign URL failed: %v", err), time.Now())
+		return
+	}
+
+	// 4. 调 ModelServer（传签名 URL）
 	log.Printf("[Worker-%d] detecting task %s, modality=%s", workerID, taskUID, task.Modality)
-	resultJSON, err := wp.client.Detect(ctx, Modality(task.Modality), file.OSSURL, task.TaskUID, fmt.Sprintf("%d", task.UserID))
+	resultJSON, err := wp.client.Detect(ctx, Modality(task.Modality), signedURL, task.TaskUID, fmt.Sprintf("%d", task.UserID))
 	if err != nil {
 		wp.taskRepo.UpdateFailed(task.ID, err.Error(), time.Now())
 		log.Printf("[Worker-%d] task %s detect failed: %v", workerID, taskUID, err)

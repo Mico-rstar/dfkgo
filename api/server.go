@@ -62,7 +62,7 @@ func NewServer(db *gorm.DB, maker auth.AuthMaker, cfg config.Config, ossService 
 		poolSize = 4
 	}
 	modelClient := taskservice.NewHTTPModelClient(cfg.ModelServerBaseURL, cfg.ModelServerTimeoutSec)
-	workerPool := taskservice.NewWorkerPool(queue, taskRepo, fileRepo, modelClient, poolSize)
+	workerPool := taskservice.NewWorkerPool(queue, taskRepo, fileRepo, modelClient, ossService, poolSize)
 
 	s := &Server{
 		maker:       maker,
@@ -92,7 +92,7 @@ func NewServerWithDeps(db *gorm.DB, maker auth.AuthMaker, cfg config.Config, oss
 	if poolSize <= 0 {
 		poolSize = 4
 	}
-	workerPool := taskservice.NewWorkerPool(queue, taskRepo, fileRepo, client, poolSize)
+	workerPool := taskservice.NewWorkerPool(queue, taskRepo, fileRepo, client, ossService, poolSize)
 
 	s := &Server{
 		maker:       maker,

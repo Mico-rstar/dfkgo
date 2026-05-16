@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/alibabacloud-go/tea/tea"
 	ossv2 "github.com/aliyun/alibabacloud-oss-go-sdk-v2/oss"
 	osscreds "github.com/aliyun/alibabacloud-oss-go-sdk-v2/oss/credentials"
-	"github.com/alibabacloud-go/tea/tea"
 	credentials "github.com/aliyun/credentials-go/credentials"
 )
 
@@ -92,6 +92,22 @@ func (s *ossServiceImpl) BuildOssURL(bucket, objectKey string) string {
 		endpoint = fmt.Sprintf("oss-%s.aliyuncs.com", s.cfg.OSSRegion)
 	}
 	return fmt.Sprintf("https://%s.%s/%s", bucket, endpoint, objectKey)
+}
+
+func (s *ossServiceImpl) SignURL(ctx context.Context, bucket, objectKey string, expireSec int64) (string, error) {
+	if expireSec <= 0 {
+		expireSec = 3600
+	}
+	result, err := s.client.Presign(ctx, &ossv2.GetObjectRequest{
+		Bucket: &bucket,
+		Key:    &objectKey,
+	}, func(o *ossv2.PresignOptions) {
+		o.Expires = time.Duration(expireSec) * time.Second
+	})
+	if err != nil {
+		return "", fmt.Errorf("presign URL failed: %w", err)
+	}
+	return result.URL, nil
 }
 
 // buildSTSPolicy 生成限定 bucket + objectKeyPrefix 的最小权限 STS Policy

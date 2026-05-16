@@ -28,3 +28,7 @@ func (m *MockOSSService) HeadObject(_ context.Context, _, _ string) (bool, error
 func (m *MockOSSService) BuildOssURL(bucket, objectKey string) string {
 	return fmt.Sprintf("https://%s.oss-cn-hangzhou.aliyuncs.com/%s", bucket, objectKey)
 }
+
+func (m *MockOSSService) SignURL(_ context.Context, bucket, objectKey string, expireSec int64) (string, error) {
+	return fmt.Sprintf("https://%s.oss-cn-hangzhou.aliyuncs.com/%s?sign=mock&expires=%d", bucket, objectKey, expireSec), nil
+}
